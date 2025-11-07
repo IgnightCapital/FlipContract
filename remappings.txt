@@ -1,2 +1,4 @@
-@openzeppelin/=node_modules/@openzeppelin/contracts/
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
+@openzeppelin/contracts/utils/ReentrancyGuard.sol=node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
 @layerzerolabs/=node_modules/@layerzerolabs/

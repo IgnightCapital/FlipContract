@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 import {StableWrapper} from "../../src/StableWrapper.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {Base} from "./Base.t.sol";
 
 /************************************************
