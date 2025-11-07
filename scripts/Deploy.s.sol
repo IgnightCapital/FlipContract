@@ -116,8 +116,8 @@ contract Deploy is Script {
         console2.log("Deploying StreamVault...");
         Vault.VaultParams memory vaultParams = Vault.VaultParams({
             decimals: decimals,
-            cap: vaultCap * 10**decimals,
-            minimumSupply: minSupply * 10**decimals
+            cap: uint104(vaultCap * 10**decimals),
+            minimumSupply: uint56(minSupply * 10**decimals)
         });
 
         StreamVault vault = new StreamVault(
@@ -154,15 +154,10 @@ contract Deploy is Script {
 
         if (testMode) {
             console2.log("");
-            console2.log("Test Mode Commands:");
-            console2.log("1. Check your balance:");
-            console2.log("   cast call", assetAddress, "'balanceOf(address)(uint256)'", deployer);
-            console2.log("");
-            console2.log("2. Approve StableWrapper:");
-            console2.log("   cast send", assetAddress, "'approve(address,uint256)'", address(wrapper), "<AMOUNT>");
-            console2.log("");
-            console2.log("3. Deposit and stake:");
-            console2.log("   cast send", address(vault), "'depositAndStake(address,uint256)'", deployer, "<AMOUNT>");
+            console2.log("Test Mode - Next Steps:");
+            console2.log("1. Check token balance");
+            console2.log("2. Approve and deposit tokens");
+            console2.log("3. Test the vault functions");
         }
     }
 }
