@@ -60,6 +60,42 @@ cast call $ASSET_ADDRESS "decimals()(uint8)" --rpc-url $ETHEREUM_RPC_URL
 
 ## Step 3: Deploy Contracts
 
+### Option A: Test Mode (with MockERC20)
+
+For testing on testnet or local network, you can use test mode to automatically deploy a MockERC20:
+
+```bash
+# In .env, set:
+TEST_MODE=true
+# ASSET_ADDRESS not needed
+DECIMALS=6
+ASSET_SYMBOL=USD
+# Optional:
+# MOCK_MINT_AMOUNT=10000000
+
+# Test mode deployment
+forge script scripts/Deploy.s.sol \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --broadcast
+```
+
+This will:
+1. Deploy MockERC20 with the specified decimals
+2. Mint tokens to your deployer address
+3. Use the mock token as the asset for StableWrapper and StreamVault
+
+### Option B: Production Mode (with real tokens)
+
+For production deployment using real tokens (USDC, WETH, etc.):
+
+```bash
+# In .env, set:
+TEST_MODE=false
+ASSET_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  # Real USDC
+DECIMALS=6
+ASSET_SYMBOL=USD
+```
+
 ### Dry Run (Simulation)
 
 Test the deployment without broadcasting transactions:
