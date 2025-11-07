@@ -26,12 +26,27 @@ remappings = [
     '@openzeppelin/contracts/utils/ReentrancyGuard.sol=node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol',
 ]
 solc-version = "0.8.22"
+
 [rpc_endpoints]
+# Mainnets
+ethereum = "${ETHEREUM_RPC_URL}"
+arbitrum = "${ARBITRUM_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+base = "${BASE_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
+
+# Testnets
 sepolia = "${SEPOLIA_RPC_URL}"
-berachain = "${BERACHIAN_RPC_URL}"
 
 [etherscan]
-sepolia = { key = "${ETHERSCAN_API_KEY}" }
+# Mainnets
+ethereum = { key = "${ETHERSCAN_API_KEY}" }
+arbitrum = { key = "${ARBISCAN_API_KEY}" }
+optimism = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
+base = { key = "${BASESCAN_API_KEY}" }
+polygon = { key = "${POLYGONSCAN_API_KEY}" }
 
+# Testnets
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
