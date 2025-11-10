@@ -7,7 +7,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 import {IStableWrapper} from "./interfaces/IStableWrapper.sol";
-import {OFT} from "./layerzero/OFT.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 import {Whitelist} from "./Whitelist.sol";
 
@@ -17,7 +16,7 @@ import {Whitelist} from "./Whitelist.sol";
  * @notice Users receive a Stream token that maps 1:1 to the asset deposited.
  * @notice Initiated withdrawals can be completed after the epoch has passed.
  */
-contract StableWrapper is OFT, ReentrancyGuard, Whitelist {
+contract StableWrapper is ERC20, Ownable, ReentrancyGuard, Whitelist {
     using SafeERC20 for IERC20;
 
     // #############################################
@@ -142,19 +141,16 @@ contract StableWrapper is OFT, ReentrancyGuard, Whitelist {
      * @param _name is the name of the wrapped ERC-20
      * @param _symbol is the symbol of the wrapped ERC-20
      * @param _keeper is the address of the keeper
-     * @param _lzEndpoint is the address of the LayerZero endpoint
-     * @param _delegate is the address of the delegate
      */
     constructor(
         address _asset,
         string memory _name,
         string memory _symbol,
         uint8 _underlyingDecimals,
-        address _keeper,
-        address _lzEndpoint,
-        address _delegate
+        address _keeper
     )
-        OFT(_name, _symbol, _underlyingDecimals, _lzEndpoint, _delegate)
+        ERC20(_name, _symbol)
+        Ownable()
     {
         if (_asset == address(0)) revert AddressMustBeNonZero();
         if (_keeper == address(0)) revert AddressMustBeNonZero();
