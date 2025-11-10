@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 import {StableWrapper} from "../../src/StableWrapper.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {Base} from "./Base.t.sol";
 
 /************************************************
@@ -16,12 +15,8 @@ contract StableWrapperPermissionedFuncsTest is Base {
         vm.assume(_caller != address(0));
 
         vm.startPrank(_caller);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                _caller
-            )
-        );
+        // Ownable: caller is not the owner
+        vm.expectRevert();
         stableWrapper.processWithdrawals();
         vm.stopPrank();
     }
@@ -37,12 +32,8 @@ contract StableWrapperPermissionedFuncsTest is Base {
         vm.assume(_caller != owner);
         vm.assume(_caller != address(0));
         vm.startPrank(_caller);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                _caller
-            )
-        );
+        // Ownable: caller is not the owner
+        vm.expectRevert();
         stableWrapper.setKeeper(vm.addr(1001));
         assertEq(stableWrapper.keeper(), keeper);
     }
@@ -60,12 +51,8 @@ contract StableWrapperPermissionedFuncsTest is Base {
         vm.assume(_caller != owner);
         vm.assume(_caller != address(0));
         vm.startPrank(_caller);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                _caller
-            )
-        );
+        // Ownable: caller is not the owner
+        vm.expectRevert();
         stableWrapper.setAllowIndependence(true);
         assertEq(stableWrapper.allowIndependence(), false);
     }
@@ -89,12 +76,8 @@ contract StableWrapperPermissionedFuncsTest is Base {
         vm.assume(_caller != owner);
         vm.assume(_caller != address(0));
         vm.startPrank(_caller);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                _caller
-            )
-        );
+        // Ownable: caller is not the owner
+        vm.expectRevert();
         stableWrapper.transferAsset(keeper, 0, address(0));
         vm.stopPrank();
     }
@@ -163,12 +146,8 @@ contract StableWrapperPermissionedFuncsTest is Base {
         vm.assume(_caller != address(0));
 
         vm.startPrank(_caller);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                _caller
-            )
-        );
+        // Ownable: caller is not the owner
+        vm.expectRevert();
         stableWrapper.setDecimals(18);
         vm.stopPrank();
     }

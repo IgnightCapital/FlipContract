@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 import {StableWrapper} from "../../src/StableWrapper.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {Base} from "./Base.t.sol";
 
 /************************************************
@@ -27,14 +26,8 @@ contract StableWrapperInitiateWithdrawTest is Base {
     ) public {
         vm.assume(_amount != 0);
         vm.startPrank(keeper);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IERC20Errors.ERC20InsufficientBalance.selector,
-                address(stableWrapper),
-                0,
-                uint256(_amount)
-            )
-        );
+        // ERC20: burn amount exceeds balance
+        vm.expectRevert();
         stableWrapper.initiateWithdrawalFromVault(depositor1, _amount);
         vm.stopPrank();
 

@@ -74,7 +74,7 @@ contract Base is TestHelperOz5 {
         // lzEndpoint = vm.addr(14);
         lzDelegate = vm.addr(15);
 
-        usdc = new MockERC20("USD Coin", "USDC");
+        usdc = new MockERC20("USD Coin", "USDC", decimals);
 
         vm.startPrank(owner);
         stableWrapper = new StableWrapper(

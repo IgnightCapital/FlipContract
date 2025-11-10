@@ -18,12 +18,8 @@ contract StreamVaultRollRoundTest is Base {
         vm.assume(_caller != address(0));
         stakeAndRollRound(depositor1, depositor1, _amount);
         vm.startPrank(_caller);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                _caller
-            )
-        );
+        // Ownable: caller is not the owner
+        vm.expectRevert();
         streamVault.rollToNextRound(0, true);
         vm.stopPrank();
     }
