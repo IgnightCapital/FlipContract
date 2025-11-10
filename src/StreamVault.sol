@@ -12,6 +12,7 @@ import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 import {IStableWrapper} from "./interfaces/IStableWrapper.sol";
 import {OFT} from "./layerzero/OFT.sol";
 import {SendParam, MessagingFee, MessagingReceipt, OFTReceipt} from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
+import {Whitelist} from "./Whitelist.sol";
 
 /**
  * @title StreamVault
@@ -19,7 +20,7 @@ import {SendParam, MessagingFee, MessagingReceipt, OFTReceipt} from "@layerzerol
  * @notice Users receive shares for their stakes, which can be redeemed for assets
  * @notice The rounds will be rolled over on a weekly basis
  */
-contract StreamVault is ReentrancyGuard, OFT {
+contract StreamVault is ReentrancyGuard, OFT, Whitelist {
     using SafeERC20 for IERC20;
     using ShareMath for Vault.StakeReceipt;
 
@@ -163,7 +164,7 @@ contract StreamVault is ReentrancyGuard, OFT {
     function depositAndStake(
         uint104 amount,
         address creditor
-    ) external nonReentrant {
+    ) external nonReentrant onlyWhitelisted {
         if (creditor == address(0)) revert AddressMustBeNonZero();
 
         IStableWrapper(stableWrapper).depositToVault(msg.sender, amount);
@@ -180,7 +181,7 @@ contract StreamVault is ReentrancyGuard, OFT {
      */
     function depositETHAndStake(
         address creditor
-    ) external payable nonReentrant {
+    ) external payable nonReentrant onlyWhitelisted {
         if (creditor == address(0)) revert AddressMustBeNonZero();
         
         IStableWrapper(stableWrapper).depositETHToVault{value: msg.value}(msg.sender);
@@ -198,7 +199,7 @@ contract StreamVault is ReentrancyGuard, OFT {
     function unstakeAndWithdraw(
         uint256 numShares,
         uint256 minAmountOut
-    ) external nonReentrant {
+    ) external nonReentrant onlyWhitelisted {
         // First unstake the tokens
         uint256 withdrawAmount = _unstake(
             numShares,
@@ -217,7 +218,7 @@ contract StreamVault is ReentrancyGuard, OFT {
      * @notice Performs instant unstake and initiates withdrawal in a single transaction
      * @param amount Amount to unstake instantly
      */
-    function instantUnstakeAndWithdraw(uint104 amount) external nonReentrant {
+    function instantUnstakeAndWithdraw(uint104 amount) external nonReentrant onlyWhitelisted {
         // First perform instant unstake
         _instantUnstake(amount, stableWrapper);
 
@@ -232,7 +233,7 @@ contract StreamVault is ReentrancyGuard, OFT {
         SendParam calldata sendParam,
         MessagingFee calldata fee,
         address payable refundAddress
-    ) external payable returns (MessagingReceipt memory, OFTReceipt memory) {
+    ) external payable onlyWhitelisted returns (MessagingReceipt memory, OFTReceipt memory) {
         // First redeem any shares if needed
         Vault.StakeReceipt memory stakeReceipt = stakeReceipts[msg.sender];
         if (stakeReceipt.amount > 0 || stakeReceipt.unredeemedShares > 0) {
@@ -254,7 +255,7 @@ contract StreamVault is ReentrancyGuard, OFT {
      * @param creditor is the address that can claim/withdraw staked amount
      * @dev An approve() by the msg.sender is required beforehand
      */
-    function stake(uint104 amount, address creditor) public nonReentrant {
+    function stake(uint104 amount, address creditor) public nonReentrant onlyWhitelisted {
         if (!allowIndependence) revert IndependenceNotAllowed();
         if (amount == 0) revert AmountMustBeGreaterThanZero();
         if (creditor == address(0)) revert AddressMustBeNonZero();
@@ -321,7 +322,7 @@ contract StreamVault is ReentrancyGuard, OFT {
      * @notice External wrapper for instant unstaking
      * @param amount is the amount to withdraw
      */
-    function instantUnstake(uint104 amount) external nonReentrant {
+    function instantUnstake(uint104 amount) external nonReentrant onlyWhitelisted {
         if (!allowIndependence) revert IndependenceNotAllowed();
         _instantUnstake(amount, msg.sender);
     }
@@ -364,7 +365,7 @@ contract StreamVault is ReentrancyGuard, OFT {
     function unstake(
         uint256 numShares,
         uint256 minAmountOut
-    ) external nonReentrant {
+    ) external nonReentrant onlyWhitelisted {
         if (!allowIndependence) revert IndependenceNotAllowed();
         _unstake(numShares, msg.sender, minAmountOut);
     }
@@ -431,7 +432,7 @@ contract StreamVault is ReentrancyGuard, OFT {
      * @notice Redeems shares that are owed to the account
      * @param numShares is the number of shares to redeem
      */
-    function redeem(uint256 numShares) external nonReentrant {
+    function redeem(uint256 numShares) external nonReentrant onlyWhitelisted {
         if (numShares == 0) revert AmountMustBeGreaterThanZero();
 
         _redeem(numShares);
@@ -440,7 +441,7 @@ contract StreamVault is ReentrancyGuard, OFT {
     /**
      * @notice Redeems the entire unredeemedShares balance that is owed to the account
      */
-    function maxRedeem() external nonReentrant {
+    function maxRedeem() external nonReentrant onlyWhitelisted {
         _redeem(0);
     }
 
@@ -582,6 +583,30 @@ contract StreamVault is ReentrancyGuard, OFT {
     // #############################################
     // SETTERS
     // #############################################
+
+    /**
+     * @notice Adds an address to the whitelist
+     * @param account Address to add to whitelist
+     */
+    function addToWhitelist(address account) external onlyOwner {
+        _addToWhitelist(account);
+    }
+
+    /**
+     * @notice Removes an address from the whitelist
+     * @param account Address to remove from whitelist
+     */
+    function removeFromWhitelist(address account) external onlyOwner {
+        _removeFromWhitelist(account);
+    }
+
+    /**
+     * @notice Enables or disables the whitelist
+     * @param enabled Whether whitelist should be enabled
+     */
+    function setWhitelistEnabled(bool enabled) external onlyOwner {
+        _setWhitelistEnabled(enabled);
+    }
 
     /**
      * @notice Sets a new stable wrapper contract address

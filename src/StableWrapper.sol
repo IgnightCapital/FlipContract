@@ -9,6 +9,7 @@ import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 import {IStableWrapper} from "./interfaces/IStableWrapper.sol";
 import {OFT} from "./layerzero/OFT.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
+import {Whitelist} from "./Whitelist.sol";
 
 /**
  * @title StableWrapper
@@ -16,7 +17,7 @@ import {IWETH} from "./interfaces/IWETH.sol";
  * @notice Users receive a Stream token that maps 1:1 to the asset deposited.
  * @notice Initiated withdrawals can be completed after the epoch has passed.
  */
-contract StableWrapper is OFT, ReentrancyGuard {
+contract StableWrapper is OFT, ReentrancyGuard, Whitelist {
     using SafeERC20 for IERC20;
 
     // #############################################
@@ -173,7 +174,7 @@ contract StableWrapper is OFT, ReentrancyGuard {
      * @param to Address to transfer assets to
      * @param amount Amount of assets to deposit
      */
-    function deposit(address to, uint256 amount) external nonReentrant {
+    function deposit(address to, uint256 amount) external nonReentrant onlyWhitelisted {
         if (!allowIndependence) revert IndependenceNotAllowed();
         if (amount == 0) revert AmountMustBeGreaterThanZero();
 
@@ -188,7 +189,7 @@ contract StableWrapper is OFT, ReentrancyGuard {
      * @notice Deposits ETH from a specified address and mints equivalent tokens
      * @param to Address to transfer assets to
      */
-    function depositETH(address to) external payable nonReentrant {
+    function depositETH(address to) external payable nonReentrant onlyWhitelisted {
         if (!allowIndependence) revert IndependenceNotAllowed();
         if (msg.value == 0) revert AmountMustBeGreaterThanZero();
         if (asset != WETH) revert AssetMustBeWETH();
@@ -247,7 +248,7 @@ contract StableWrapper is OFT, ReentrancyGuard {
      * @notice Burns tokens and creates withdrawal receipt
      * @param amount Amount of tokens to burn for withdrawal
      */
-    function initiateWithdrawal(uint224 amount) external nonReentrant {
+    function initiateWithdrawal(uint224 amount) external nonReentrant onlyWhitelisted {
         if (!allowIndependence) revert IndependenceNotAllowed();
         if (amount == 0) revert AmountMustBeGreaterThanZero();
         if (balanceOf(msg.sender) < amount) revert InsufficientBalance();
@@ -295,7 +296,7 @@ contract StableWrapper is OFT, ReentrancyGuard {
      * @notice Complete withdrawal if epoch has passed
      * @param to Address to transfer assets to
      */
-    function completeWithdrawal(address to) external nonReentrant {
+    function completeWithdrawal(address to) external nonReentrant onlyWhitelisted {
         WithdrawalReceipt memory receipt = withdrawalReceipts[msg.sender];
 
         if (receipt.amount == 0) revert AmountMustBeGreaterThanZero();
@@ -316,7 +317,7 @@ contract StableWrapper is OFT, ReentrancyGuard {
      * @notice Complete withdrawal in ETH if epoch has passed
      * @param to Address to transfer assets to
      */
-    function completeWithdrawalETH(address to) external nonReentrant {
+    function completeWithdrawalETH(address to) external nonReentrant onlyWhitelisted {
         if (asset != WETH) revert AssetMustBeWETH();
         WithdrawalReceipt memory receipt = withdrawalReceipts[msg.sender];
 
@@ -434,6 +435,30 @@ contract StableWrapper is OFT, ReentrancyGuard {
     // #############################################
     // SETTERS
     // #############################################
+
+    /**
+     * @notice Adds an address to the whitelist
+     * @param account Address to add to whitelist
+     */
+    function addToWhitelist(address account) external onlyOwner {
+        _addToWhitelist(account);
+    }
+
+    /**
+     * @notice Removes an address from the whitelist
+     * @param account Address to remove from whitelist
+     */
+    function removeFromWhitelist(address account) external onlyOwner {
+        _removeFromWhitelist(account);
+    }
+
+    /**
+     * @notice Enables or disables the whitelist
+     * @param enabled Whether whitelist should be enabled
+     */
+    function setWhitelistEnabled(bool enabled) external onlyOwner {
+        _setWhitelistEnabled(enabled);
+    }
 
     /**
      * @notice Allows keeper to set the keeper address
