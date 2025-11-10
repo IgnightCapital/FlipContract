@@ -10,7 +10,7 @@ import {Vault} from "../src/lib/Vault.sol";
 
 /**
  * @title Deploy
- * @notice Deployment script for Stream V2 protocol on Ethereum and other chains
+ * @notice Deployment script for Stream V2 protocol
  * @dev Configure deployment parameters in .env file
  * @dev Set TEST_MODE=true to deploy MockERC20 for testing
  */
@@ -43,8 +43,6 @@ contract Deploy is Script {
             assetSymbol = vm.envString("ASSET_SYMBOL");
         }
 
-        address lzEndpoint = vm.envAddress("LZ_ENDPOINT");
-
         // Vault parameters
         uint256 vaultCap = vm.envUint("VAULT_CAP"); // in whole tokens
         uint256 minSupply = vm.envUint("MIN_SUPPLY"); // in whole tokens
@@ -65,7 +63,6 @@ contract Deploy is Script {
         if (!testMode) {
             console2.log("Asset:", assetAddress);
         }
-        console2.log("LayerZero Endpoint:", lzEndpoint);
         console2.log("Decimals:", decimals);
         console2.log("Asset Symbol:", assetSymbol);
         console2.log("Vault Cap:", vaultCap, "tokens");
@@ -103,9 +100,7 @@ contract Deploy is Script {
             wrapperName,
             wrapperSymbol,
             decimals,
-            deployer, // initial keeper (will be set to vault)
-            lzEndpoint,
-            deployer // delegate
+            deployer // initial keeper (will be set to vault)
         );
         console2.log("StableWrapper deployed:", address(wrapper));
         console2.log("  Name:", wrapperName);
@@ -124,8 +119,6 @@ contract Deploy is Script {
             vaultName,
             vaultSymbol,
             address(wrapper),
-            lzEndpoint,
-            deployer, // delegate
             vaultParams
         );
         console2.log("StreamVault deployed:", address(vault));
