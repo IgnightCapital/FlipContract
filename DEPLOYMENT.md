@@ -21,24 +21,40 @@ cp .env.example .env
 ### Required Parameters
 
 - `PRIVATE_KEY`: Your deployer wallet private key (without 0x prefix)
-- `ASSET_ADDRESS`: Address of the underlying token (USDC, WETH, WBTC, etc.)
+- `TEST_MODE`: Set to `true` for test deployment with MockERC20, `false` for production
 - `DECIMALS`: Token decimals (6 for USDC, 18 for WETH, 8 for WBTC)
 - `ASSET_SYMBOL`: Symbol for naming (e.g., "USD", "ETH", "BTC")
-- `LZ_ENDPOINT`: LayerZero V2 endpoint for your chain
 - `VAULT_CAP`: Maximum vault capacity in whole tokens
 - `MIN_SUPPLY`: Minimum initial deposit in whole tokens
 
-### Example Configuration (Ethereum USDC)
+### Required Only for Production Mode (TEST_MODE=false)
+
+- `ASSET_ADDRESS`: Address of the underlying token (USDC, WETH, WBTC, etc.)
+
+### Example Configuration (Ethereum USDC - Production)
 
 ```bash
 PRIVATE_KEY=your_private_key_here
+TEST_MODE=false
 ASSET_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 DECIMALS=6
 ASSET_SYMBOL=USD
-LZ_ENDPOINT=0x1a44076050125825900e736c501f859c50fE728c
 VAULT_CAP=10000000
 MIN_SUPPLY=1000
 ETHEREUM_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY
+ETHERSCAN_API_KEY=your_etherscan_api_key
+```
+
+### Example Configuration (Testnet - Test Mode)
+
+```bash
+PRIVATE_KEY=your_private_key_here
+TEST_MODE=true
+DECIMALS=6
+ASSET_SYMBOL=USD
+VAULT_CAP=1000000
+MIN_SUPPLY=100
+ETHEREUM_TEST_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR-API-KEY
 ETHERSCAN_API_KEY=your_etherscan_api_key
 ```
 
@@ -67,22 +83,26 @@ For testing on testnet or local network, you can use test mode to automatically 
 ```bash
 # In .env, set:
 TEST_MODE=true
-# ASSET_ADDRESS not needed
+# ASSET_ADDRESS not needed (will be auto-deployed)
 DECIMALS=6
 ASSET_SYMBOL=USD
+VAULT_CAP=1000000
+MIN_SUPPLY=100
 # Optional:
-# MOCK_MINT_AMOUNT=10000000
+# MOCK_MINT_AMOUNT=10000000 # Amount of tokens to mint to deployer
 
-# Test mode deployment
+# Test mode deployment to Sepolia
 forge script scripts/Deploy.s.sol \
-  --rpc-url $SEPOLIA_RPC_URL \
+  --rpc-url $ETHEREUM_TEST_RPC_URL \
   --broadcast
 ```
 
 This will:
-1. Deploy MockERC20 with the specified decimals
-2. Mint tokens to your deployer address
-3. Use the mock token as the asset for StableWrapper and StreamVault
+1. Deploy MockERC20 with the specified decimals and symbol
+2. Mint tokens to your deployer address (default: 10,000,000 tokens)
+3. Deploy StableWrapper using the mock token
+4. Deploy StreamVault and set it as keeper
+5. Output all deployed contract addresses
 
 ### Option B: Production Mode (with real tokens)
 
@@ -94,6 +114,8 @@ TEST_MODE=false
 ASSET_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  # Real USDC
 DECIMALS=6
 ASSET_SYMBOL=USD
+VAULT_CAP=10000000
+MIN_SUPPLY=1000
 ```
 
 ### Dry Run (Simulation)
@@ -125,6 +147,7 @@ The deployment script will output:
 ==============================================
 Deployment Complete
 ==============================================
+Mode: TEST or PRODUCTION
 Asset: 0x...
 StableWrapper: 0x...
 StreamVault: 0x...
@@ -132,44 +155,49 @@ Owner: 0x...
 ==============================================
 ```
 
-Save these addresses for future reference!
+**Important:** Save these addresses to your `.env` file for use in test scripts:
+```bash
+ASSET_ADDRESS=0x...
+WRAPPER_ADDRESS=0x...
+VAULT_ADDRESS=0x...
+```
+
+These addresses are required for running test scripts like `TestDepositAndStake.s.sol` and `TestWhitelistRestriction.s.sol`.
 
 ## Step 4: Verify Contracts (if not done during deployment)
 
 If you didn't use `--verify` during deployment:
 
 ```bash
+# Get constructor arguments from your .env
+WRAPPER_NAME="Stream USD"  # or value from WRAPPER_NAME env var
+WRAPPER_SYMBOL="streamUSD"  # or value from WRAPPER_SYMBOL env var
+VAULT_NAME="Staked Stream USD"  # or value from VAULT_NAME env var
+VAULT_SYMBOL="xUSD"  # or value from VAULT_SYMBOL env var
+
 # Verify StableWrapper
 forge verify-contract \
-  <WRAPPER_ADDRESS> \
+  $WRAPPER_ADDRESS \
   src/StableWrapper.sol:StableWrapper \
-  --constructor-args $(cast abi-encode "constructor(address,string,string,uint8,address,address,address)" $ASSET_ADDRESS "Stream USD" "streamUSD" 6 $KEEPER_ADDRESS $LZ_ENDPOINT $DELEGATE_ADDRESS) \
+  --constructor-args $(cast abi-encode "constructor(address,string,string,uint8,address)" $ASSET_ADDRESS "$WRAPPER_NAME" "$WRAPPER_SYMBOL" $DECIMALS $DEPLOYER_ADDRESS) \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --chain-id 1
 
 # Verify StreamVault
+# Note: VaultParams is (uint8 decimals, uint104 cap, uint56 minimumSupply)
 forge verify-contract \
-  <VAULT_ADDRESS> \
+  $VAULT_ADDRESS \
   src/StreamVault.sol:StreamVault \
-  --constructor-args $(cast abi-encode "constructor(string,string,address,address,address,(uint8,uint256,uint256))" "Staked Stream USD" "xUSD" $WRAPPER_ADDRESS $LZ_ENDPOINT $DELEGATE_ADDRESS "(6,10000000000000,1000000000)") \
+  --constructor-args $(cast abi-encode "constructor(string,string,address,(uint8,uint104,uint56))" "$VAULT_NAME" "$VAULT_SYMBOL" $WRAPPER_ADDRESS "($DECIMALS,$CAP_IN_WEI,$MIN_SUPPLY_IN_WEI)") \
   --etherscan-api-key $ETHERSCAN_API_KEY \
   --chain-id 1
 ```
 
-## Step 5: Post-Deployment Configuration
+**Note:** Make sure to replace `$CAP_IN_WEI` and `$MIN_SUPPLY_IN_WEI` with the actual values in wei (VAULT_CAP * 10^DECIMALS and MIN_SUPPLY * 10^DECIMALS).
 
-### Configure LayerZero (for cross-chain)
+## Step 4: Post-Deployment Testing
 
-If deploying on multiple chains, configure LayerZero peers:
-
-```bash
-# Example: Set Arbitrum as peer for Ethereum deployment
-forge script scripts/SetPeersArbitrum.s.sol \
-  --rpc-url $ETHEREUM_RPC_URL \
-  --broadcast
-```
-
-See LayerZero documentation for complete setup.
+After deployment, you can test the basic functionality using the provided test scripts.
 
 ## Common Deployment Scenarios
 
@@ -177,10 +205,10 @@ See LayerZero documentation for complete setup.
 
 ```bash
 # .env configuration
+TEST_MODE=false
 ASSET_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 DECIMALS=6
 ASSET_SYMBOL=USD
-LZ_ENDPOINT=0x1a44076050125825900e736c501f859c50fE728c
 VAULT_CAP=10000000
 MIN_SUPPLY=1000
 
@@ -192,10 +220,10 @@ forge script scripts/Deploy.s.sol --rpc-url $ETHEREUM_RPC_URL --broadcast --veri
 
 ```bash
 # .env configuration
+TEST_MODE=false
 ASSET_ADDRESS=0xaf88d065e77c8cC2239327C5EDb3A432268e5831
 DECIMALS=6
 ASSET_SYMBOL=USD
-LZ_ENDPOINT=0x1a44076050125825900e736c501f859c50fE728c
 VAULT_CAP=10000000
 MIN_SUPPLY=1000
 
@@ -207,10 +235,10 @@ forge script scripts/Deploy.s.sol --rpc-url $ARBITRUM_RPC_URL --broadcast --veri
 
 ```bash
 # .env configuration
+TEST_MODE=false
 ASSET_ADDRESS=0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599
 DECIMALS=8
 ASSET_SYMBOL=BTC
-LZ_ENDPOINT=0x1a44076050125825900e736c501f859c50fE728c
 VAULT_CAP=1000
 MIN_SUPPLY=0.1
 
@@ -220,64 +248,126 @@ forge script scripts/Deploy.s.sol --rpc-url $ETHEREUM_RPC_URL --broadcast --veri
 
 ## Testing Deployment
 
-After deployment, test the basic flow:
+After deployment, you have two options for testing:
+
+### Option 1: Using Test Scripts (Recommended)
+
+The project includes ready-to-use test scripts:
+
+#### Test 1: Basic Deposit and Stake
 
 ```bash
-# 1. Approve StableWrapper to spend your tokens
+# Make sure your .env has the deployed addresses:
+# ASSET_ADDRESS=0x...
+# WRAPPER_ADDRESS=0x...
+# VAULT_ADDRESS=0x...
+# DEPOSIT_AMOUNT=1000
+
+forge script scripts/TestDepositAndStake.s.sol \
+  --rpc-url $ETHEREUM_TEST_RPC_URL \
+  --broadcast \
+  -vvv
+```
+
+This script will:
+1. Check balances
+2. Approve wrapper to spend tokens
+3. Call depositAndStake
+4. Show stake receipt and final balances
+
+#### Test 2: Whitelist Restriction
+
+```bash
+forge script scripts/TestWhitelistRestriction.s.sol \
+  --rpc-url $ETHEREUM_TEST_RPC_URL \
+  --broadcast \
+  -vvv
+```
+
+This script will:
+1. Create a new random wallet
+2. Transfer tokens to it
+3. Attempt depositAndStake without whitelist (should fail)
+4. Add wallet to whitelist
+5. Attempt depositAndStake again (should succeed)
+
+### Option 2: Manual Testing with Cast
+
+If you prefer manual testing:
+
+```bash
+# 1. Add your address to whitelist (owner only)
+cast send $VAULT_ADDRESS "addToWhitelist(address)" $YOUR_ADDRESS \
+  --private-key $PRIVATE_KEY \
+  --rpc-url $ETHEREUM_RPC_URL
+
+# 2. Approve wrapper to spend your tokens
 cast send $ASSET_ADDRESS "approve(address,uint256)" $WRAPPER_ADDRESS 1000000000 \
   --private-key $PRIVATE_KEY \
   --rpc-url $ETHEREUM_RPC_URL
 
-# 2. Deposit and stake via StreamVault
-cast send $VAULT_ADDRESS "depositAndStake(address,uint256)" $YOUR_ADDRESS 1000000000 \
+# 3. Deposit and stake via StreamVault
+cast send $VAULT_ADDRESS "depositAndStake(uint104,address)" 1000000000 $YOUR_ADDRESS \
   --private-key $PRIVATE_KEY \
   --rpc-url $ETHEREUM_RPC_URL
 
-# 3. Check your stake receipt
+# 4. Check your stake receipt
 cast call $VAULT_ADDRESS "stakeReceipts(address)(uint16,uint104,uint128)" $YOUR_ADDRESS \
   --rpc-url $ETHEREUM_RPC_URL
+
+# 5. Check vault state
+cast call $VAULT_ADDRESS "vaultState()(uint16,uint128)" \
+  --rpc-url $ETHEREUM_RPC_URL
 ```
-
-## LayerZero Endpoint Addresses
-
-| Network | Chain ID | LayerZero Endpoint |
-|---------|----------|-------------------|
-| Ethereum | 1 | `0x1a44076050125825900e736c501f859c50fE728c` |
-| Arbitrum | 42161 | `0x1a44076050125825900e736c501f859c50fE728c` |
-| Optimism | 10 | `0x1a44076050125825900e736c501f859c50fE728c` |
-| Base | 8453 | `0x1a44076050125825900e736c501f859c50fE728c` |
-| Polygon | 137 | `0x1a44076050125825900e736c501f859c50fE728c` |
 
 ## Troubleshooting
 
 ### "Gas estimation failed"
 - Ensure you have enough ETH for gas
 - Check that the asset address is correct
-- Verify LayerZero endpoint is correct for your chain
+- If in production mode, verify the asset token exists at ASSET_ADDRESS
 
 ### "Verification failed"
 - Make sure to use the exact constructor arguments
 - Wait a few minutes after deployment before verifying
 - Try manual verification on Etherscan
+- Double-check the constructor argument encoding (especially VaultParams struct)
 
-### "Transaction reverted"
+### "Transaction reverted" during deployment
 - Check that all addresses in .env are correct
-- Ensure asset token exists at the specified address
+- Ensure asset token exists at the specified address (for production mode)
 - Verify decimals match the actual token decimals
+- Make sure VAULT_CAP and MIN_SUPPLY are reasonable values
+
+### "NotWhitelisted" error during testing
+- The vault has whitelist restrictions enabled by default
+- Add your address to the whitelist first:
+  ```bash
+  cast send $VAULT_ADDRESS "addToWhitelist(address)" $YOUR_ADDRESS --private-key $PRIVATE_KEY --rpc-url $RPC_URL
+  ```
+- Or use the TestWhitelistRestriction.s.sol script to test this functionality
+
+### "Insufficient balance" during test scripts
+- In test mode, make sure MockERC20 minted enough tokens to your address
+- Check balance: `cast call $ASSET_ADDRESS "balanceOf(address)(uint256)" $YOUR_ADDRESS --rpc-url $RPC_URL`
+- For production mode, ensure you have the underlying tokens in your wallet
 
 ## Security Checklist
 
 Before production deployment:
 
 - [ ] Audit all smart contracts
-- [ ] Test deployment on testnet first
-- [ ] Verify all contract addresses
-- [ ] Set up monitoring and alerts
-- [ ] Document emergency procedures
-- [ ] Test withdrawal flow
-- [ ] Configure LayerZero properly
-- [ ] Set appropriate vault caps and limits
-- [ ] Verify owner/keeper addresses
+- [ ] Test deployment on testnet first (use TEST_MODE=true)
+- [ ] Run all test scripts successfully on testnet
+- [ ] Verify all contract addresses on block explorer
+- [ ] Test the full flow: deposit → stake → roll round → unstake → withdraw
+- [ ] Set appropriate vault caps and limits (VAULT_CAP, MIN_SUPPLY)
+- [ ] Verify owner/keeper addresses are correct
+- [ ] Set up whitelist for authorized users
+- [ ] Test whitelist restrictions work correctly
+- [ ] Set up monitoring and alerts for contract events
+- [ ] Document emergency procedures and owner responsibilities
+- [ ] Ensure private keys are securely stored (never commit to git)
 
 ## Support
 

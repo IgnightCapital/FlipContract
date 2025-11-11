@@ -1,5 +1,113 @@
 <h1 align="center"> Stream V2 </h1>
 
+## Getting Started
+
+### Prerequisites
+
+This project uses **Foundry** as the primary development framework for smart contract development, testing, and deployment. Hardhat is also available as an alternative build system.
+
+#### Installing Foundry (Required)
+
+Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.
+
+**Installation:**
+```bash
+# Install foundryup (the Foundry toolchain installer)
+curl -L https://foundry.paradigm.xyz | bash
+
+# Run foundryup to install Foundry
+foundryup
+```
+
+After installation, you should have access to:
+- `forge` - Build, test, fuzz, debug and deploy Solidity contracts
+- `cast` - Perform Ethereum RPC calls from the command line
+- `anvil` - Local Ethereum node for development
+- `chisel` - Solidity REPL for quick testing
+
+**Verify installation:**
+```bash
+forge --version
+```
+
+**For more details, see:** [Foundry Book](https://book.getfoundry.sh/getting-started/installation)
+
+#### Installing Node.js Dependencies (Optional)
+
+If you want to use Hardhat as an alternative build system:
+
+```bash
+# Using npm
+npm install
+
+# Using yarn
+yarn install
+
+# Using pnpm
+pnpm install
+```
+
+**Requirements:**
+- Node.js >= 18.16.0
+
+### Building the Project
+
+#### Using Foundry (Recommended)
+```bash
+# Build all contracts
+forge build
+
+# Clean build artifacts
+forge clean
+```
+
+#### Using Hardhat (Alternative)
+```bash
+# Compile contracts
+npm run compile
+
+# Clean artifacts
+npm run clean
+```
+
+### Running Tests
+
+#### Using Foundry (Recommended)
+```bash
+# Run all tests
+forge test
+
+# Run specific test file
+forge test --match-path test/StreamVault/Stake.t.sol
+
+# Run specific test function
+forge test --match-test testStake
+
+# Run tests with gas reporting
+forge test --gas-report
+
+# Run tests with verbosity (see console.log outputs)
+forge test -vv
+```
+
+#### Using Hardhat (Alternative)
+```bash
+npm run test
+```
+
+### Deployment
+
+Deployment scripts are located in the `scripts/` directory and use Foundry's script system:
+
+```bash
+# Example deployment (replace with actual values)
+forge script scripts/Deploy.s.sol \
+  --rpc-url <RPC_URL> \
+  --private-key <PRIVATE_KEY> \
+  --broadcast \
+  --verify
+```
+
 ## Deployments & Resources
 
 ### Repository
