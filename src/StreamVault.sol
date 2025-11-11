@@ -10,8 +10,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ReentrancyGuard} from "./ReentrancyGuard.sol";
 import {IStableWrapper} from "./interfaces/IStableWrapper.sol";
-import {OFT} from "./layerzero/OFT.sol";
-import {SendParam, MessagingFee, MessagingReceipt, OFTReceipt} from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import {Whitelist} from "./Whitelist.sol";
 
 /**
@@ -20,7 +18,7 @@ import {Whitelist} from "./Whitelist.sol";
  * @notice Users receive shares for their stakes, which can be redeemed for assets
  * @notice The rounds will be rolled over on a weekly basis
  */
-contract StreamVault is ReentrancyGuard, OFT, Whitelist {
+contract StreamVault is ERC20, Ownable, ReentrancyGuard, Whitelist {
     using SafeERC20 for IERC20;
     using ShareMath for Vault.StakeReceipt;
 
@@ -124,26 +122,17 @@ contract StreamVault is ReentrancyGuard, OFT, Whitelist {
      * @param _tokenName is the token name of the share ERC-20
      * @param _tokenSymbol is the token symbol of the share ERC-20
      * @param _stableWrapper is the address of the stable wrapper contract
-     * @param _lzEndpoint is the address of the LayerZero endpoint
-     * @param _delegate is the address of the delegate
      * @param _vaultParams is the `VaultParams` struct with general vault data
      */
     constructor(
         string memory _tokenName,
         string memory _tokenSymbol,
         address _stableWrapper,
-        address _lzEndpoint,
-        address _delegate,
         Vault.VaultParams memory _vaultParams
     )
+        ERC20(_tokenName, _tokenSymbol)
+        Ownable()
         ReentrancyGuard()
-        OFT(
-            _tokenName,
-            _tokenSymbol,
-            _vaultParams.decimals,
-            _lzEndpoint,
-            _delegate
-        )
     {
         if (_vaultParams.cap == 0) revert CapMustBeGreaterThanZero();
         if (_stableWrapper == address(0)) revert AddressMustBeNonZero();
@@ -227,21 +216,6 @@ contract StreamVault is ReentrancyGuard, OFT, Whitelist {
             msg.sender,
             uint224(amount)
         );
-    }
-
-    function bridgeWithRedeem(
-        SendParam calldata sendParam,
-        MessagingFee calldata fee,
-        address payable refundAddress
-    ) external payable onlyWhitelisted returns (MessagingReceipt memory, OFTReceipt memory) {
-        // First redeem any shares if needed
-        Vault.StakeReceipt memory stakeReceipt = stakeReceipts[msg.sender];
-        if (stakeReceipt.amount > 0 || stakeReceipt.unredeemedShares > 0) {
-            _redeem(0);
-        }
-
-        // Then call the internal _send
-        return _send(sendParam, fee, refundAddress);
     }
 
     // #############################################
